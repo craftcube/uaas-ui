@@ -11,14 +11,16 @@ import SigninPage from './components/auth/signin.vue'
 Vue.use(VueRouter);
 
 const routes = [
-  { path: '/', component: DashboardPage },
+  { path: '/', redirect: '/dashboard' },
   { path: '/signup', component: SignupPage },
   { path: '/signin', component: SigninPage },
   {
     path: '/dashboard',
     component: DashboardPage,
     beforeEnter (to, from, next) {
-      if (store.state.token) {
+      console.log(to);
+      console.log(store.state.token);
+      if (localStorage.getItem('token')) {
         next()
       } else {
         next('/signin')

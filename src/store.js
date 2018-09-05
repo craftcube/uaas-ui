@@ -97,7 +97,7 @@ export default new Vuex.Store({
             });
             const expiresInSec=getExpiresInSeconds(token);
             dispatch('setLogoutTimer', expiresInSec);
-            router.replace('/')
+            // router.replace('/')
         },
         logout({commit}) {
             commit('clearAuthData');
