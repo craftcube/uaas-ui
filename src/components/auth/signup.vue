@@ -94,7 +94,7 @@
         //   terms: this.terms
         // };
         // console.log(formData);
-        this.$store.dispatch('signup', this.signUpForm);
+        this.$store.dispatch('signUp', this.signUpForm);
       }
     }
   }

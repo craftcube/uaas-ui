@@ -2,6 +2,12 @@ import Vue from 'vue'
 import Vuex from 'vuex'
 import axios from './axios-auth'
 import globalAxios from 'axios'
+import {
+    getExpiresInSeconds,
+    parsePayload,
+    saveTokenInStorage,
+    removeTokenFromStorage
+} from './token-utils'
 
 import router from './router'
 
@@ -15,7 +21,10 @@ export default new Vuex.Store({
     mutations: {
         authUser(state, userData) {
             state.token = userData.token;
-            state.user = userData.user;
+            let user = parsePayload(userData.token);
+            console.log(user);
+            state.user = user;
+            saveTokenInStorage(userData.token);
         },
         storeUser(state, user) {
             state.user = user;
@@ -23,38 +32,31 @@ export default new Vuex.Store({
         clearAuthData(state) {
             state.token = null;
             state.user = null;
+            removeTokenFromStorage();
         }
     },
     actions: {
         setLogoutTimer({commit}, expirationTime) {
             setTimeout(() => {
                 commit('clearAuthData');
+                router.push("/signin");
             }, expirationTime * 1000)
         },
-        signup({commit, dispatch}, authData) {
+        signUp({commit, dispatch}, authData) {
             axios.post('/signup', {
                 username: authData.username,
                 password: authData.password,
                 confirmPassword: authData.confirmPassword,
             }).then(res => {
                     console.log(res);
-                    console.log(res);
                     const token = res.data.data;
                     console.log('token=' + token);
-                    localStorage.setItem('token', token);
-                    let payload = JSON.parse(atob(token.split('.')[1]));
-                    console.log(payload);
                     commit('authUser', {
-                        token: token,
-                        user: payload
+                        token: token
                     });
-                    const now = new Date();
-                    const expiresInSec=payload.exp-now.getTime();
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('user', payload);
-                    localStorage.setItem('expirationDate', payload.exp);
-                    console.log(payload);
-                    dispatch('storeUser', payload);
+                    const expiresInSec=getExpiresInSeconds(token);
+                    console.log(expiresInSec);
+                    //dispatch('storeUser', payload);
                     dispatch('setLogoutTimer', expiresInSec);
                     router.push("/dashboard");
                 })
@@ -68,27 +70,18 @@ export default new Vuex.Store({
                 .then((res) => {
                     console.log(res);
                     const token = res.data.data;
+                    console.log(parsePayload(token));
                     console.log('token=' + token);
-                    localStorage.setItem('token', token);
-                    let payload = JSON.parse(atob(token.split('.')[1]));
-                    console.log(payload);
-
-                    const now = new Date();
-                    const expiresInSec=payload.exp-now.getTime();
-                    // const expirationDate = new Date(now.getTime() + res.data.expiresIn * 1000);
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('user', payload);
-                    localStorage.setItem('expirationDate', payload.exp);
                     commit('authUser', {
-                        token: token,
-                        user: payload
+                        token: token
                     });
-                    dispatch('setLogoutTimer', expiresInSec)
+                    const expiresInSec=getExpiresInSeconds(token);
+                    dispatch('setLogoutTimer', expiresInSec);
                     router.push("/dashboard");
                 })
                 .catch(error => console.log(error))
         },
-        tryAutoLogin({commit}) {
+        tryAutoLogin({commit,dispatch}) {
             const token = localStorage.getItem('token');
             if (!token) {
                 return;
@@ -99,43 +92,41 @@ export default new Vuex.Store({
             if (now >= new Date(expirationDate)) {
                 return
             }
-            const user = localStorage.getItem('user');
             commit('authUser', {
-                token: token,
-                user: user
-            })
+                token: token
+            });
+            const expiresInSec=getExpiresInSeconds(token);
+            dispatch('setLogoutTimer', expiresInSec);
+            router.replace('/')
         },
         logout({commit}) {
             commit('clearAuthData');
-            localStorage.removeItem('expirationDate');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
             router.replace('/signin')
         },
         storeUser({commit, state}, userData) {
-            if (!state.idToken) {
+            if (!state.token) {
                 return
             }
-            globalAxios.post('/users.json' + '?auth=' + state.idToken, userData)
-                .then(res => console.log(res))
-                .catch(error => console.log(error))
+            // globalAxios.post('/users.json' + '?auth=' + state.idToken, userData)
+            //     .then(res => console.log(res))
+            //     .catch(error => console.log(error))
         },
         fetchUser({commit, state}) {
             if (!state.token) {
                 return
             }
-            globalAxios.get('/users.json' + '?auth=' + state.token)
+            globalAxios.get('/hello')
                 .then(res => {
                     console.log(res);
                     const data = res.data;
-                    const users = [];
-                    for (let key in data) {
-                        const user = data[key];
-                        user.id = key;
-                        users.push(user);
-                    }
-                    console.log(users);
-                    commit('storeUser', users[0]);
+                    // const users = [];
+                    // for (let key in data) {
+                    //     const user = data[key];
+                    //     user.id = key;
+                    //     users.push(user);
+                    // }
+                    // console.log(users);
+                    // commit('storeUser', users[0]);
                 })
                 .catch(error => console.log(error));
         }
