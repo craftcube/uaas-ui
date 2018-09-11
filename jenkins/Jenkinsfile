@@ -1,26 +1,31 @@
-pipeline {
-    agent {
-        docker {
-            image 'docker.registry/node:6-alpine'
-            args '-p 3000:8080'
+node {
+    def app
+
+    stage('Clone repository') {
+        /* Let's make sure we have the repository cloned to our workspace */
+
+        checkout scm
+    }
+
+    stage('Build UI') {
+        docker.image('docker.registry/node:8-alpine').inside {
+            sh 'npm install'
+            sh 'npm run build'
         }
     }
-    environment {
-        CI = 'true'
+
+    stage('Build image') {
+        /* This builds the actual image; synonymous to
+         * docker build on the command line */
+
+        app = docker.build("docker.registry/uaas-ui","./dcoker/Dockerfile")
     }
-    stages {
-        stage('Build') {
-            steps {
-                sh 'npm install'
-                sh 'npm run build'
-            }
-        }
-        stage('Deliver') {
-            steps {
-                sh './jenkins/scripts/deliver.sh'
-                input message: 'Finished using the web site? (Click "Proceed" to continue)'
-                sh './jenkins/scripts/kill.sh'
-            }
+
+    stage('Push image') {
+        /* Finally, we'll push the image into Docker Hub */
+
+        docker.withRegistry('http://docker.registry', 'docker-registry-credentials') {
+            app.push("latest")
         }
     }
 }
