@@ -8,7 +8,7 @@ node {
     }
 
     stage('Build UI') {
-        docker.image('docker.registry/node:8-alpine').inside {
+        docker.image('docker.registry/node:8-alpine').inside('-v $HOME/.npmrc:/root/.npmrc') {
             sh 'npm install'
             sh 'npm run build'
         }
